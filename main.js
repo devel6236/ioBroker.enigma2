@@ -185,6 +185,7 @@ adapter.on('stateChange', function (id, state) {
 								getResponse('GETINFO', deviceId, PATH['ABOUT'], evaluateCommandResponse);
 								getResponse('GETVOLUME', deviceId, PATH['VOLUME'], evaluateCommandResponse);
 								getResponse('GETCURRENT', deviceId, PATH['GET_CURRENT'], evaluateCommandResponse);
+								getResponse('DEVICEINFO_HDD', deviceId, PATH['DEVICEINFO'], evaluateCommandResponse);
 								getResponse('ISRECORD', deviceId, PATH['ISRECORD'], ISRECORD);
 								getResponse('TIMERLIST', deviceId, PATH['TIMERLIST'], evaluateCommandResponse);
 								getResponse('GETMOVIELIST', deviceId, PATH['GETLOCATIONS'], evaluateCommandResponse);
@@ -771,11 +772,6 @@ async function evaluateCommandResponse(command, deviceId, xml) {
 						await Sleep(500);
 					}
 
-					movieList.sort(function (a, b) {
-						// sort recording time desc
-						return b.recordingtime == a.recordingtime ? 0 : +(b.recordingtime > a.recordingtime) || -1;
-					});
-
 					movieList = JSON.stringify(movieList);
 
 					let state = await adapter.getStateAsync('enigma2.MOVIE_LIST');
@@ -1299,18 +1295,6 @@ function main() {
 		getResponse('ISRECORD', deviceId, PATH['ISRECORD'], ISRECORD);
 		getResponse('TIMERLIST', deviceId, PATH['TIMERLIST'], evaluateCommandResponse);
 	}, adapter.config.PollingInterval);
-
-	deviceinfo_interval = setInterval(function () {
-		if (isConnected) {
-			getResponse('DEVICEINFO_HDD', deviceId, PATH['DEVICEINFO'], evaluateCommandResponse);
-		}
-	}, 30000);
-
-	movielist_interval = setInterval(function () {
-		if (isConnected) {
-			getResponse('GETMOVIELIST', deviceId, PATH['GETLOCATIONS'], evaluateCommandResponse);
-		}
-	}, 60000 * 30);
 }
 
 

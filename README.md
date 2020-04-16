@@ -1,7 +1,5 @@
 ![Logo](admin/enigma2.png)
 
-[![NPM version](http://img.shields.io/npm/v/iobroker.enigma2.svg)](https://www.npmjs.com/package/iobroker.enigma2) [![Downloads](https://img.shields.io/npm/dm/iobroker.enigma2.svg)](https://www.npmjs.com/package/iobroker.enigma2) [![NPM](https://nodei.co/npm/iobroker.enigma2.png?downloads=true)](https://nodei.co/npm/iobroker.enigma2/)
-
 # ioBroker enigma2
 
 - Adapter for ioBroker to retrieve information from an enigma2 receiver and send commands
@@ -126,6 +124,9 @@ sendTo("enigma2.0", "send", {
  
 ## Changelog
 
+### 1.3.1 (2020-04-16)
+* (devel6236)       movieList.sort() & deviceinfo_interval() & movielist_interval() removed in main.js
+* (devel6236)       //enigma2.Update: query DEVICEINFO_HDD
 
 ### 1.3.0 (2020-02-08)
 * (Matten-Matten)       add: `connectionType` and `dataSource` in `io-package.json`

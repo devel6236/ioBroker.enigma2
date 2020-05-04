@@ -90,7 +90,7 @@
         "Alexa": "false",
         "Webinterface": "true",
         "movieliste": "true",
-        "PollingInterval": 7000
+        "PollingInterval": 5000
     },
     "objects": [],
     "instanceObjects": [

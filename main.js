@@ -1,6 +1,6 @@
 /* jshint -W097 */// jshint strict:false
 /*jslint node: true */
-/* enigma2 Adapter V 1.3.1 */
+/* enigma2 Adapter V 1.2.9 */
 'use strict';
 
 const request = require('request');
@@ -16,12 +16,9 @@ const adapter = utils.adapter('enigma2');
 
 var isConnected = null;
 var deviceId = 1;
-var moviePlayChannelInfo;
 
 //Polling
 var event_interval;
-var deviceinfo_interval;
-var movielist_interval;
 
 var PATH = {
 	MESSAGEANSWER: '/web/messageanswer?getanswer=now',
@@ -29,7 +26,6 @@ var PATH = {
 	REMOTE_CONTROL: '/web/remotecontrol?command=',
 	VOLUME: '/web/vol',
 	VOLUME_SET: '/web/vol?set=set',
-	ABOUT: '/web/about',
 	GET_CURRENT: '/web/getcurrent',
 	POWERSTATE: '/web/powerstate',
 	MESSAGE: '/web/message?text=',
@@ -37,7 +33,6 @@ var PATH = {
 	TIMER_TOGGLE: '/api/timertogglestatus?sRef=',
 	TIMERLIST: '/web/timerlist',
 	MAIN_COMMAND: '/web/powerstate?newstate=',
-	IP_CHECK: '/web/about',
 	ZAP: '/web/zap?sRef=',
 	ISRECORD: '/web/timerlist',
 	API: '/api/statusinfo',
@@ -78,12 +73,6 @@ adapter.on("unload", function (callback) {
 	try {
 		if (event_interval) {
 			clearInterval(event_interval);
-		}
-		if (deviceinfo_interval) {
-			clearInterval(deviceinfo_interval);
-		}
-		if (movielist_interval) {
-			clearInterval(movielist_interval);
 		}
 	} catch (e) {
 		callback();
@@ -173,8 +162,6 @@ adapter.on('stateChange', function (id, state) {
 								getResponse('GETSTANDBY', deviceId, PATH['POWERSTATE'], evaluateCommandResponse);
 								getResponse('MESSAGEANSWER', deviceId, PATH['MESSAGEANSWER'], evaluateCommandResponse);
 								getResponse('GETCURRENT', deviceId, PATH['GET_CURRENT'], evaluateCommandResponse);
-								getResponse('GETINFO', deviceId, PATH['ABOUT'], evaluateCommandResponse);
-								getResponse('GETVOLUME', deviceId, PATH['VOLUME'], evaluateCommandResponse);
 								getResponse('ISRECORD', deviceId, PATH['ISRECORD'], ISRECORD);
 								getResponse('TIMERLIST', deviceId, PATH['TIMERLIST'], evaluateCommandResponse);
 								getResponse('DEVICEINFO_HDD', deviceId, PATH['DEVICEINFO'], evaluateCommandResponse);
@@ -194,12 +181,9 @@ adapter.on('stateChange', function (id, state) {
 								} else if (id === adapter.namespace + '.command.SET_VOLUME') {
 									getResponse('NONE', deviceId, PATH['VOLUME_SET'] + parseInt(state.val, /*10*/), function (error, command, deviceId, xml) {
 										if (!error) {
-											//adapter.setState('command.SET_VOLUME', { val: '', ack: true });
 											adapter.setState('command.SET_VOLUME', { val: state.val, ack: false });
 										} else {
 											adapter.setState('command.SET_VOLUME', { val: '', ack: true });
-											//adapter.setState('command.SET_VOLUME', { val: state.val, ack: true });
-											getResponse('GETVOLUME', deviceId, PATH['VOLUME'], evaluateCommandResponse);
 										}
 									});
 								} else if (id === adapter.namespace + '.command.REMOTE-CONTROL') {
@@ -286,8 +270,6 @@ adapter.on('stateChange', function (id, state) {
 adapter.on('ready', function () {
 	main();
 	main2();
-	//timer();
-	//deleteObject();
 });
 
 async function getResponseAsync(deviceId, path) {
@@ -380,8 +362,7 @@ function getResponse(command, deviceId, path, callback) {
 	});
 	req.on('error', function (e) {
 		setStatus(false);
-		adapter.log.debug("received error: " + e.message + " Box eventuell nicht erreichbar?");
-		adapter.setState('enigma2.isRecording', false, true);
+		//adapter.setState('enigma2.isRecording', false, true);
 		return;
 	});
 }
@@ -501,7 +482,6 @@ async function evaluateCommandResponse(command, deviceId, xml) {
 
 				var e2SERVICEREFERENCE = (xml.e2currentserviceinformation.e2eventlist[0].e2event[0].e2eventservicereference[0]);
 				var e2SERVICEREFERENCE2 = e2SERVICEREFERENCE.replace(/:/g, '_').slice(0, -1);
-				moviePlayChannelInfo = e2SERVICEREFERENCE;
 				
 				if (e2SERVICEREFERENCE === '-1:8087252:0:77132724:2:0:C:0:0:77040804:' || e2EVENTREMAINING === '0') {
 					adapter.setState('enigma2.CHANNEL_SERVICEREFERENCE', { val: '', ack: true });
@@ -512,18 +492,22 @@ async function evaluateCommandResponse(command, deviceId, xml) {
 						adapter.getState('enigma2.STANDBY', function (err, state) {
 							if (state.val === false) {
 								//openwebif PICON http://...
-								if(moviePlayChannelInfo.includes('/m')){
+								if(e2SERVICEREFERENCE.includes('/m')){
+									adapter.setState('enigma2.CHANNEL', { val: e2SERVICEREFERENCE.slice(53, e2SERVICEREFERENCE.length).slice(0, (e2SERVICEREFERENCE.slice(53, e2SERVICEREFERENCE.length).indexOf(' -') + 1) - 1), ack: true });
+									
 									adapter.setState('enigma2.CHANNEL_PICON', { val: 'http://' + adapter.config.IPAddress + ':' + adapter.config.Port + '/picon/' + 'movieCenter' + '.png', ack: true });
 
-									//get base64 Channel Picon
+									//get Servicereference Picon (base64)
 									var imagePath = 'http://' + adapter.config.Username + ':' + adapter.config.Password + '@' + adapter.config.IPAddress + ':' + adapter.config.Port + '/picon/' + 'movieCenter' + '.png';
 									GETPICON64(imagePath);
 									
 									adapter.setState('enigma2.CHANNEL_SERVICEREFERENCE_NAME', { val: 'movieCenter', ack: true });
 								}else{
+									adapter.setState('enigma2.CHANNEL', { val: xml.e2currentserviceinformation.e2eventlist[0].e2event[0].e2eventservicename[0], ack: true });
+									
 									adapter.setState('enigma2.CHANNEL_PICON', { val: 'http://' + adapter.config.IPAddress + ':' + adapter.config.Port + '/picon/' + e2SERVICEREFERENCE2 + '.png', ack: true });
 									
-									//get base64 Channel Picon
+									//get Servicereference Picon (base64)
 									var imagePath = 'http://' + adapter.config.Username + ':' + adapter.config.Password + '@' + adapter.config.IPAddress + ':' + adapter.config.Port + '/picon/' + e2SERVICEREFERENCE2 + '.png';
 									GETPICON64(imagePath);
 									
@@ -543,7 +527,7 @@ async function evaluateCommandResponse(command, deviceId, xml) {
 				var e2Eventstart = (xml.e2currentserviceinformation.e2eventlist[0].e2event[0].e2eventstart[0]);
 				var e2Eventend = (xml.e2currentserviceinformation.e2eventlist[0].e2event[1].e2eventstart[0]);
 				
-				if(moviePlayChannelInfo.includes('/m')){
+				if(e2SERVICEREFERENCE.includes('/m')){
 					adapter.getState('enigma2.PROGRAMM', function (err, state) { 
 					
 							e2EVENTREMAINING_X =  e2EVENTDURATION_X - (Date.now()/1000 - state.lc/1000);
@@ -654,14 +638,7 @@ async function evaluateCommandResponse(command, deviceId, xml) {
 						adapter.setState('enigma2.EVENT_TIME_PASSED', { val: sec2HMS(parseInt(Step1)), ack: true });
 					};
 				}
-				break;
 			}
-		case "GETINFO":
-				if(moviePlayChannelInfo.includes('/m')){
-					adapter.setState('enigma2.CHANNEL', { val: moviePlayChannelInfo.slice(53, moviePlayChannelInfo.length).slice(0, (moviePlayChannelInfo.slice(53, moviePlayChannelInfo.length).indexOf(' -') + 1) - 1), ack: true });
-				}else{
-					adapter.setState('enigma2.CHANNEL', { val: xml.e2abouts.e2about[0].e2servicename[0], ack: true });
-				}
 			break;
 		case "DEVICEINFO":
 			adapter.setState('enigma2.WEB_IF_VERSION', { val: xml.e2deviceinfo.e2webifversion[0], ack: true });
@@ -930,11 +907,9 @@ function setStatus(status) {
 			getResponse('GETSTANDBY', deviceId, PATH['POWERSTATE'], evaluateCommandResponse);
 			getResponse('MESSAGEANSWER', deviceId, PATH['MESSAGEANSWER'], evaluateCommandResponse);
 			getResponse('GETCURRENT', deviceId, PATH['GET_CURRENT'], evaluateCommandResponse);
-			getResponse('GETINFO', deviceId, PATH['ABOUT'], evaluateCommandResponse);
-			getResponse('GETVOLUME', deviceId, PATH['VOLUME'], evaluateCommandResponse);
 			getResponse('ISRECORD', deviceId, PATH['ISRECORD'], ISRECORD);
 			getResponse('TIMERLIST', deviceId, PATH['TIMERLIST'], evaluateCommandResponse);
-			getResponse('GETMOVIELIST', deviceId, PATH['GETLOCATIONS'], evaluateCommandResponse);
+			//getResponse('GETMOVIELIST', deviceId, PATH['GETLOCATIONS'], evaluateCommandResponse);
 			getResponse('DEVICEINFO', deviceId, PATH['DEVICEINFO'], evaluateCommandResponse);
 		} else {
 			adapter.log.info("enigma2: " + adapter.config.IPAddress + ":" + adapter.config.Port + " ist nicht erreichbar!");
@@ -946,22 +921,26 @@ function setStatus(status) {
 			adapter.setState('enigma2.CHANNEL_PICON', "");
 			adapter.setState('enigma2.CHANNEL_PICON64', "");
 			adapter.setState('enigma2.CHANNEL_SERVICEREFERENCE', "");
+			adapter.setState('enigma2.CHANNEL_SERVICEREFERENCE_NAME', "");
 			adapter.setState('enigma2.EVENTDESCRIPTION', "");
 			adapter.setState('enigma2.EVENTDURATION', "");
+			adapter.setState('enigma2.EVENTDURATION_MIN', "");
+			adapter.setState('enigma2.EVENT_PROGRESS_PERCENT', "0", true);
 			adapter.setState('enigma2.EVENTREMAINING', "");
+			adapter.setState('enigma2.EVENTREMAINING_MIN', "");
+			adapter.setState('enigma2.EVENT_TIME_END', "");
+			adapter.setState('enigma2.EVENT_TIME_PASSED', "");
+			adapter.setState('enigma2.EVENT_TIME_START', "");
 			adapter.setState('enigma2.MESSAGE_ANSWER', "");
 			adapter.setState('enigma2.MODEL', "");
-			adapter.setState('enigma2.MUTED', "");
 			adapter.setState('enigma2.NETWORK', "");
 			adapter.setState('enigma2.PROGRAMM', "");
 			adapter.setState('enigma2.PROGRAMM_AFTER', "");
 			adapter.setState('enigma2.PROGRAMM_AFTER_INFO', "");
 			adapter.setState('enigma2.PROGRAMM_INFO', "");
 			adapter.setState('enigma2.STANDBY', true, true);
-			adapter.setState('enigma2.VOLUME', "");
 			adapter.setState('enigma2.WEB_IF_VERSION', "");
 			adapter.setState('Message.MESSAGE_ANSWER', false, true);
-			//...
 		}
 	}
 }
@@ -1323,16 +1302,12 @@ function main() {
 
 	// in this example all states changes inside the adapters namespace are subscribed
 	adapter.subscribeStates('*');
-
-	//Check ever 3 secs
 	adapter.log.info("starting Polling every " + adapter.config.PollingInterval + " ms");
 
 	event_interval = setInterval(function () {
 		getResponse('GETSTANDBY', deviceId, PATH['POWERSTATE'], evaluateCommandResponse);
 		getResponse('MESSAGEANSWER', deviceId, PATH['MESSAGEANSWER'], evaluateCommandResponse);
 		getResponse('GETCURRENT', deviceId, PATH['GET_CURRENT'], evaluateCommandResponse);
-		getResponse('GETINFO', deviceId, PATH['ABOUT'], evaluateCommandResponse);
-		getResponse('GETVOLUME', deviceId, PATH['VOLUME'], evaluateCommandResponse);
 		getResponse('ISRECORD', deviceId, PATH['ISRECORD'], ISRECORD);
 		getResponse('TIMERLIST', deviceId, PATH['TIMERLIST'], evaluateCommandResponse);
 	}, adapter.config.PollingInterval);

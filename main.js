@@ -804,12 +804,16 @@ async function evaluateCommandResponse(command, deviceId, xml) {
 					// only update if we have new movies	
 					if (state && state.val !== null) {
 						if (movieList !== state.val) {
-							adapter.setState('enigma2.MOVIE_LIST', movieList, true);
+							if(movieList !== '[]'){
+								adapter.setState('enigma2.MOVIE_LIST', movieList, true);
+							}
 						} else {
 							adapter.log.debug("no new movies found -> movies list is up to date");
 						}
 					} else {
-						adapter.setState('enigma2.MOVIE_LIST', movieList, true);
+						if(movieList !== '[]'){
+								adapter.setState('enigma2.MOVIE_LIST', movieList, true);
+						}
 					}
 				}
 			} catch (err) {

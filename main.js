@@ -1057,7 +1057,7 @@ function main() {
 	adapter.setObjectNotExists('enigma2.MESSAGE_ANSWER', {
 		type: 'state',
 		common: {
-			type: 'integer',
+			type: 'mixed',
 			role: 'message',
 			name: 'Message Answer',
 			read: true,
